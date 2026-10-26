@@ -38,8 +38,8 @@
 
 ### 3. GitHub Pages 켜기
 
-저장소 **Settings → Pages → Build and deployment**에서 Source를 **Deploy from a branch**, Branch를 **main / (root)**로 저장합니다.
-1~2분 뒤 https://psl212158.github.io/lacto-buyer-desk/ 에서 열립니다.
+이미 켜져 있습니다. 사이트는 `gh-pages` 브랜치에서 배포되며 https://psl212158.github.io/lacto-buyer-desk/ 에서 열립니다.
+`main` 하나로만 관리하고 싶다면 **Settings → Pages → Build and deployment**에서 Branch를 **main / (root)**로 바꾸면 됩니다.
 
 ## Claude API 키 발급
 
@@ -49,7 +49,7 @@
 
 ## 코드를 고친 뒤
 
-- `index.html`, `config.js`를 고치면 main에 푸시하는 것으로 사이트에 반영됩니다.
+- `index.html`, `config.js`를 고치면 `main`에 커밋한 뒤 같은 내용을 `gh-pages`에도 푸시해야 사이트에 반영됩니다 (`git push origin main main:gh-pages`). 1~2분 뒤 바뀝니다.
 - `Code.gs`를 고치면 Apps Script에 다시 붙여 넣고 **배포 → 배포 관리 → 수정(연필) → 버전: 새 버전 → 배포**를 누릅니다. 웹 앱 URL은 그대로 유지됩니다.
 
 ## 데이터 구조
