@@ -595,7 +595,7 @@ const BIZ = ['수입상', '유통사', '도매', '리테일', '외식·급식', 
 const COUNTRIES = ['France','Germany','Italy','Spain','Portugal','United Kingdom','Ireland','Netherlands','Belgium','Luxembourg','Switzerland','Austria','Poland','Czech Republic','Hungary','Romania','Greece','Sweden','Norway','Denmark','Finland','Turkey','United States','Canada','Mexico','Brazil','Chile','United Arab Emirates','Saudi Arabia','Qatar','Kuwait','Israel','Egypt','Morocco','South Africa','India','China','Hong Kong','Taiwan','Japan','Korea','Vietnam','Thailand','Singapore','Malaysia','Indonesia','Philippines','Australia','New Zealand','Kazakhstan','Mongolia'];
 const SHOW_COLORS = ['#2349C9', '#107038', '#0F766E', '#8B3A8F', '#B26B00', '#C2461F'];
 const AV_COLORS = ['#2349C9', '#107038', '#0F766E', '#8B3A8F', '#B26B00', '#C2461F', '#38505E'];
-const HIDE_CODES = new Set(['no_api_key']);
+const HIDE_CODES = new Set([]);
 const OK_TYPES = /^image\/(jpeg|png|webp|gif)$/;
 const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
@@ -1394,7 +1394,7 @@ function openMeetingForm(opts) {
         if (!cardBlobs.length) return;
         if (cardCtl) cardCtl.abort();
         const ctl = cardCtl = new AbortController();
-        setStatus(`<span class="spin"></span>명함을 읽는 중입니다. 보통 10~30초 걸립니다. <button type="button" class="btn btn-sm" id="fm-cz-stop">중지</button>`);
+        setStatus(`<span class="spin"></span>명함을 읽는 중입니다. 보통 5~15초 걸립니다. <button type="button" class="btn btn-sm" id="fm-cz-stop">중지</button>`);
         q('fm-cz-stop').onclick = () => ctl.abort();
         try {
           const d = parseCard(await ocrCard(cardBlobs, ctl.signal));
@@ -1549,9 +1549,7 @@ function cardErr(e) {
     case 'image_rejected': return '이 사진은 읽을 수 없는 형식입니다. JPG·PNG 사진으로 다시 선택해 주세요.';
     case 'invalid_json': case 'empty_completion': case 'refused': return '명함 내용을 인식하지 못했습니다. 밝은 곳에서 정면으로 다시 찍어 주세요.';
     case 'truncated': case 'parse_error': return '명함 내용을 인식하지 못했습니다. 밝은 곳에서 정면으로 다시 찍어 주세요.';
-    case 'no_api_key': return '서버에 명함 인식용 API 키(ANTHROPIC_API_KEY)가 없습니다. 직접 입력해 주세요.';
-    case 'busy_api': return 'Claude API가 혼잡합니다. 1~2분 뒤 다시 읽어 주세요.';
-    case 'api_error': return `명함 인식 서버 오류입니다. ${e.message || ''}`;
+    case 'ocr_failed': return `명함 글자 인식에 실패했습니다. ${e.message || ''} 잠시 뒤 다시 읽거나 직접 입력해 주세요.`;
     case 'unauthorized': return '접속 코드가 맞지 않습니다. 다시 로그인해 주세요.';
     default: return '연결이 불안정해 읽지 못했습니다. 다시 읽기를 눌러 주세요.';
   }
