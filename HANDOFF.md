@@ -54,6 +54,7 @@ tests/
   test-gas.js         서버 테스트: setup·접속 코드·CRUD·사진·바이어 리스트·단독 스크립트 모드
   test-ocr.js         명함 글자 파서 테스트 (FR/DE/AE/ES/NL 가상 명함) + 드라이브 OCR 요청 형식
   e2e.js              Playwright로 index.html을 스텁 서버에 붙여 전체 흐름 확인
+  dev-server.js       localhost에서 사이트 + 스텁 서버(/api)를 띄움. 접속 코드 lacto-test로 자동 로그인, 예시 데이터 포함
   fixtures/card0.jpg, card1.jpg   테스트용 가짜 명함 이미지
 ```
 
@@ -63,6 +64,7 @@ node tests/test-gas.js
 node tests/test-ocr.js
 npm i -D playwright && npx playwright install chromium   # 로컬에서 처음 한 번
 node tests/e2e.js    # 스크린샷은 tests/out/ (gitignore)
+node tests/dev-server.js 8797   # 브라우저로 http://localhost:8797/ (구글 없이 화면 확인)
 ```
 
 ## 5. 아키텍처
@@ -72,7 +74,7 @@ node tests/e2e.js    # 스크린샷은 tests/out/ (gitignore)
    │  fetch POST (Content-Type: text/plain, body JSON {action, code, ...})
    ▼
 [Apps Script 웹 앱 doPost]  ── 실행: 소유자 / 액세스: 모든 사용자 / 접속 코드로 보호
-   ├─ 구글 시트 (탭 shows / buyers / meetings / followups: id | updatedAt | data JSON)
+   ├─ 구글 시트 (탭 shows / buyers / meetings / followups / gallery: id | updatedAt | data JSON)
    ├─ '바이어 리스트' 탭 (사람용 표, 10분 트리거로 재생성)
    ├─ '시작하기' 탭 (사이트 주소·접속 코드·안내)
    └─ 드라이브 폴더 '락토코리아 바이어 데스크 사진' (상담 사진 + OCR 임시 문서)
@@ -109,6 +111,7 @@ node tests/e2e.js    # 스크린샷은 tests/out/ (gitignore)
   - stage: `met`(상담완료) `info`(자료발송) `sample`(샘플발송) `quote`(견적·협상) `order`(오더 성사) `hold`(보류) `lost`(종료)
 - **meetings:** `buyerId, showId, date, time, staff, interests[], requests[], notes, photos:[{id, thumb, kind('card'|'people'|'etc'), caption}], source('card'|'manual'), createdAt, updatedAt, by`
 - **followups:** `buyerId, showId, date, type, staff, content, response, stageAfter, nextAction, nextDate, createdAt, updatedAt, by`
+- **gallery (보류 갤러리):** `showId, date, photo:{id, thumb, kind, caption}, createdAt, updatedAt, by`. 바이어가 확실하지 않은 사진. 상담·통계에 안 들어감. "바이어에 연결" 시 그 바이어의 같은 날(없으면 최근) 상담 `photos`로 옮기고 문서 삭제
 
 연동 규칙(요청 사항 2·3번의 핵심):
 - 상담 저장 → 바이어 회사·담당자 정보를 폼 내용으로 갱신, `showIds`·`tags`는 그 바이어의 모든 상담에서 다시 계산, 다음 액션 반영.
@@ -137,7 +140,7 @@ clasp redeploy AKfycbwN47…(config.js 주소의 배포 id) --description "v3 �
 - **constants:** STAGES, GRADES, FU_TYPES, REQUESTS, BIZ, COUNTRIES, SHOW_COLORS
 - **state:** 객체 `S`
 - **home:** `renderHome`, `badgeCard`(전시회 배지 카드)
-- **show workspace:** `renderShow`(KPI 5개, 일자별 막대·진행 단계·국가 차트) + 탭 `renderDaily` / `renderBook`(전화번호부, 초성·알파벳 색인) / `renderFu`(지연·7일 이내·미착수·예정)
+- **show workspace:** `renderShow`(KPI 5개, 일자별 막대·진행 단계·국가 차트) + 탭 `renderDaily` / `renderBook`(전화번호부, 초성·알파벳 색인) / `renderFu`(지연·7일 이내·미착수·예정) / `renderGallery`(보류 갤러리; 폼 `openGalleryForm`·`openGalleryEdit`·`openGalleryLink`)
 - **drawer:** `renderDrawer`(진행 단계 스테퍼, 담당자 복사·tel·mailto, `photoSection`, 타임라인 `tlMeet`/`tlFu`)
 - **forms:**
   - `openMeetingForm`(명함 자동 입력 존 + 상담 사진 편집 + 기존 바이어 연결)

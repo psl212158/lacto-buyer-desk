@@ -526,6 +526,24 @@ a.val:hover{color:var(--accent);text-decoration:underline}
 .lb-prev{left:max(10px,env(safe-area-inset-left,0px));top:50%;margin-top:-22px}
 .lb-next{right:max(10px,env(safe-area-inset-right,0px));top:50%;margin-top:-22px}
 
+/* pending photo gallery */
+.gal-intro{display:flex;gap:12px 16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.gal-intro p{font-size:13px;color:var(--ink-2);flex:1 1 320px;min-width:0}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;padding:14px 16px}
+.gal{margin:0;display:grid;gap:8px;align-content:start;min-width:0}
+.gal-img{position:relative;padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface-2);cursor:zoom-in}
+.gal-img img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--surface-2)}
+.gal figcaption{font-size:12.5px;overflow-wrap:anywhere}
+.gal-acts{display:flex;gap:6px;flex-wrap:wrap}
+.gal-prev{display:block;max-height:220px;max-width:100%;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);justify-self:start}
+.gal-prev:not([src]){width:160px;height:200px}
+.gal-pick{display:grid;gap:2px;max-height:min(44vh,360px);overflow:auto;padding:4px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--sunk)}
+.gal-pick label{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13.5px}
+.gal-pick label:hover,.gal-pick label:has(input:checked){background:var(--surface)}
+.gal-pick label[hidden]{display:none}
+.gal-pick input{flex:none;margin:0}
+.gal-pick .gp-meta{margin-left:auto;color:var(--ink-3);font-size:12px;text-align:right;white-space:nowrap}
+
 /* toast */
 #toast{position:fixed;left:50%;bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 12px));transform:translateX(-50%);z-index:60;display:grid;gap:8px;justify-items:center;pointer-events:none;width:min(480px,calc(100% - 32px))}
 .toast{background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.25);animation:tin .18s ease-out}
@@ -635,7 +653,7 @@ const byDateDesc = (a, b) => (b.date || '').localeCompare(a.date || '') || (b.ti
 /* ---------- state ---------- */
 const S = {
   db: null, user: null, dl: true, assets: null, cardOK: false, onModalClose: null, photoUrls: new Map(), status: 'connecting', meId: null, meName: '', canWriteFlag: null, readOnly: false,
-  shows: [], buyers: [], meetings: [], followups: [], got: {},
+  shows: [], buyers: [], meetings: [], followups: [], gallery: [], got: {},
   view: 'home', showId: null, tab: 'daily', day: 'all',
   q: '', country: 'all', grade: 'all', scope: 'show',
   drawerId: null, confirm: null, mBy: new Map(), fBy: new Map(), hashDone: false
@@ -837,8 +855,9 @@ function renderShow() {
       <button class="tab" role="tab" aria-selected="${S.tab === 'daily'}" data-act="tab" data-tab="daily">일자별 상담<span class="count">${st.meetings.length}</span></button>
       <button class="tab" role="tab" aria-selected="${S.tab === 'book'}" data-act="tab" data-tab="book">바이어 주소록<span class="count">${st.buyers.reduce((n, b) => n + Math.max(1, (b.contacts || []).length), 0)}</span></button>
       <button class="tab" role="tab" aria-selected="${S.tab === 'fu'}" data-act="tab" data-tab="fu">팔로우업 관리${st.overdue ? `<span class="count bad">지연 ${st.overdue}</span>` : `<span class="count">${st.buyers.length}</span>`}</button>
+      <button class="tab" role="tab" aria-selected="${S.tab === 'gallery'}" data-act="tab" data-tab="gallery">보류 갤러리<span class="count">${galleryOf(s.id).length}</span></button>
     </div>
-    <div class="tabbody" role="tabpanel">${S.tab === 'book' ? renderBook(s) : S.tab === 'fu' ? renderFu(s, st) : renderDaily(s, st)}</div>
+    <div class="tabbody" role="tabpanel">${S.tab === 'book' ? renderBook(s) : S.tab === 'fu' ? renderFu(s, st) : S.tab === 'gallery' ? renderGallery(s) : renderDaily(s, st)}</div>
   </section>`;
 }
 function dailyChart(s, meetings) {
@@ -996,6 +1015,30 @@ function fuCard(b) {
   </div>`;
 }
 
+/* ---------- tab: pending photo gallery ---------- */
+// Photos whose buyer is not certain yet. They stay out of meetings, KPIs and the buyer list until linked to a buyer.
+const galleryOf = sid => S.gallery.filter(g => g.showId === sid && g.photo && isPhotoId(g.photo.id))
+  .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
+const galleryPhoto = g => Object.assign({date:g.date}, g.photo);
+function renderGallery(s) {
+  const items = galleryOf(s.id), w = canWrite() && Photo.enabled();
+  const intro = `<div class="gal-intro"><p>바이어가 누구인지 아직 확실하지 않은 사진을 모아 두는 곳입니다. 여기 있는 사진은 상담 기록과 통계에 들어가지 않습니다. 바이어를 확인하면 <b>바이어에 연결</b>을 눌러 그 바이어의 상담 기록으로 옮기세요.</p>${w ? `<button class="btn btn-primary" data-act="gallery-add">+ 보류 사진 추가</button>` : ''}</div>`;
+  if (!items.length) return intro + `<p class="sub">보류 중인 사진이 없습니다.</p>`;
+  const days = showDays(s), groups = new Map();
+  items.forEach(g => { if (!groups.has(g.date)) groups.set(g.date, []); groups.get(g.date).push(g); });
+  return intro + [...groups.entries()].map(([d, gs]) => {
+    const idx = days.indexOf(d);
+    return `<section class="dgroup">
+      <div class="dhead"><h3>${fmtLong(d) || '날짜 미입력'}</h3><span class="mono">${idx >= 0 ? `${idx + 1}일차 · ` : ''}${gs.length}장</span></div>
+      <div class="gal-grid">${gs.map(g => `<figure class="gal">
+        <button class="gal-img" data-act="gallery-view" data-id="${esc(g.id)}" aria-label="${kindLabel(g.photo.kind)} 사진 크게 보기"><img data-photo="${esc(photoRef(g.photo))}" alt="${kindLabel(g.photo.kind)}"><span class="ph-tag">${kindLabel(g.photo.kind)}</span></button>
+        <figcaption>${g.photo.caption ? esc(g.photo.caption) : '<span class="sub">메모 없음</span>'}</figcaption>
+        ${w ? `<div class="gal-acts"><button class="btn btn-sm" data-act="gallery-link" data-id="${esc(g.id)}">바이어에 연결</button><button class="btn btn-sm" data-act="gallery-edit" data-id="${esc(g.id)}">수정</button></div>` : ''}
+      </figure>`).join('')}</div>
+    </section>`;
+  }).join('');
+}
+
 /* ---------- drawer ---------- */
 function renderDrawer() {
   const el = $('#drawer');
@@ -1097,6 +1140,7 @@ function render() {
   }
   if (S.view === 'show' && !showById(S.showId) && S.status === 'ready') S.view = 'home';
   main.innerHTML = S.view === 'show' && showById(S.showId) ? renderShow() : renderHome();
+  loadPhotos(main);
   $('#notice').innerHTML = S.status === 'offline'
     ? `<div class="notice">서버에 연결되지 않았습니다. 인터넷 연결을 확인한 뒤 아래의 '지금 새로고침'을 눌러 주세요.</div>` : '';
   $('#foot').innerHTML = S.db ? `<span>${esc(S.meName || '')} 님으로 접속 중 · 30초마다 자동 새로고침</span><span><button data-act="refresh">지금 새로고침</button> · <button data-act="logout">로그아웃</button></span>` : '';
@@ -1990,7 +2034,7 @@ function openFuForm(opts) {
 function openShowForm(id) {
   if (!guardWrite()) return;
   const s = id ? showById(id) : null;
-  const linked = s ? S.buyers.filter(b => inShow(b, s.id)).length : 0;
+  const linked = s ? S.buyers.filter(b => inShow(b, s.id)).length + galleryOf(s.id).length : 0;
   const color0 = s ? colorK(s.color) : SHOW_COLORS[S.shows.length % SHOW_COLORS.length];
   openModal(`<form class="form" novalidate>
     ${mHead(s ? 'Edit Exhibition' : 'New Exhibition', s ? '전시회 정보 수정' : '전시회 추가')}
@@ -2034,6 +2078,159 @@ function openShowForm(id) {
       if (!ok) return;
       closeModal(); toast(s ? '전시회 정보를 저장했습니다.' : `${name}을(를) 추가했습니다.`);
       S.view = 'show'; S.showId = newId; S.tab = 'daily'; S.day = 'all'; render();
+    });
+  }, true);
+}
+
+/* ---------- form: pending photo gallery ---------- */
+function galleryWhen(p, showId, date) {
+  return `<div class="fld"><label for="${p}-show">전시회</label><select id="${p}-show">${sortedShows().map(s => `<option value="${esc(s.id)}" ${s.id === showId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
+    <div class="fld"><span class="lbl-t">찍은 날짜 <em>*</em></span><div class="dayrow"><div class="daychips" id="${p}-days"></div><input id="${p}-date" type="date" value="${esc(date)}" aria-label="찍은 날짜 직접 입력"></div></div>`;
+}
+function openGalleryForm() {
+  if (!guardWrite()) return;
+  if (!Photo.enabled()) { toast('사진 저장소에 연결되지 않아 사진을 올릴 수 없습니다.', 'bad'); return; }
+  const showId = showById(S.showId) ? S.showId : defaultShowId();
+  const html = `<form class="form" novalidate>
+    ${mHead('Pending Photos', '보류 사진 추가')}
+    <div class="m-body">
+      <p class="sub">바이어가 누구인지 확실하지 않은 사진을 보류 갤러리에 저장합니다. 상담 기록에는 들어가지 않습니다.</p>
+      <fieldset class="fs"><legend>언제 찍은 사진인가요</legend>${galleryWhen('gf', showId, defaultDateFor(showById(showId)))}</fieldset>
+      <fieldset class="fs"><legend>사진 <small>사진마다 종류와 메모(누구로 보이는지 등)를 남길 수 있습니다</small></legend>
+        <div class="ph-grid" id="gf-photos"></div>
+        <div class="cardzone" id="gf-zone"><div class="cz-row"><label class="btn filebtn">+ 사진 고르기<input type="file" id="gf-file" accept="image/*" multiple aria-label="사진 고르기"></label><p>여러 장을 한 번에 고르거나 끌어다 놓을 수 있습니다.</p></div></div>
+      </fieldset>
+    </div>
+    ${mFoot('보류 갤러리에 저장')}
+  </form>`;
+  openModal(html, root => {
+    const q = i => root.querySelector('#' + i);
+    bindDayPicker(root, 'gf', false);
+    let seq = 0;
+    const photos = [];
+    const draw = () => {
+      q('gf-photos').innerHTML = photos.length ? photos.map(p => `<div class="ph" data-ph="${p.key}">
+          <img src="${p.url}" alt="${kindLabel(p.kind)}">
+          <button type="button" class="ph-del" data-phdel="${p.key}" aria-label="사진 빼기">×</button>
+          <select class="ph-kind" aria-label="사진 종류">${PHOTO_KINDS.map(k => `<option value="${k.k}" ${p.kind === k.k ? 'selected' : ''}>${k.label}</option>`).join('')}</select>
+          <input class="ph-cap" placeholder="메모 (선택)" value="${esc(p.caption)}" aria-label="사진 메모">
+        </div>`).join('') : '<p class="sub">아직 고른 사진이 없습니다.</p>';
+    };
+    const add = async files => {
+      for (const f of [...files].filter(isImageFile).slice(0, 20)) {
+        const blob = await prepImage(f, 1920);
+        const thumbBlob = await prepImage(blob, 480, 0.8);
+        photos.push({key:'g' + (++seq), kind:'people', caption:'', blob, thumbBlob, url:URL.createObjectURL(thumbBlob)});
+      }
+      draw();
+    };
+    draw();
+    q('gf-file').onchange = e => { add(e.target.files); e.target.value = ''; };
+    bindDrop(q('gf-zone'), add);
+    const box = q('gf-photos');
+    const find = el => photos.find(p => p.key === el.closest('[data-ph]').dataset.ph);
+    box.addEventListener('click', e => { const b = e.target.closest('[data-phdel]'); if (b) { photos.splice(photos.indexOf(find(b)), 1); draw(); } });
+    box.addEventListener('change', e => { if (e.target.matches('.ph-kind')) find(e.target).kind = kindK(e.target.value); });
+    box.addEventListener('input', e => { if (e.target.matches('.ph-cap')) find(e.target).caption = e.target.value; });
+    root.querySelector('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const sid = q('gf-show').value, date = q('gf-date').value;
+      if (!isYmd(date)) return setErr(root, '찍은 날짜를 선택해 주세요.', q('gf-date'));
+      if (!photos.length) return setErr(root, '사진을 한 장 이상 골라 주세요.');
+      let saved = 0, failed = 0;
+      for (let n = 0; n < photos.length; n++) {
+        busy(root, true, `사진 저장 중… ${n + 1}/${photos.length}`);
+        const p = photos[n], up = await uploadPhotoItem(p);
+        if (!up) { failed++; continue; }
+        const photo = {id:up.id, thumb:up.thumb, kind:kindK(p.kind), caption:(p.caption || '').trim().slice(0, 200)};
+        const ref = col('gallery').doc(), now = Date.now();
+        if (await run(() => ref.set({showId:sid, date, photo, createdAt:now, updatedAt:now, by:S.meId || null}))) saved++;
+        else { removePhotos([photo]); failed++; }
+      }
+      busy(root, false, '보류 갤러리에 저장');
+      if (!saved) return setErr(root, '사진을 저장하지 못했습니다. 잠시 후 다시 시도하세요.');
+      closeModal();
+      toast(`보류 갤러리에 사진 ${saved}장을 저장했습니다.` + (failed ? ` ${failed}장은 저장하지 못했습니다.` : ''));
+      S.view = 'show'; S.showId = sid; S.tab = 'gallery'; render();
+    });
+  });
+}
+function openGalleryEdit(id) {
+  if (!guardWrite()) return;
+  const g = S.gallery.find(x => x.id === id); if (!g) return;
+  const html = `<form class="form" novalidate>
+    ${mHead('Pending Photo', '보류 사진 수정')}
+    <div class="m-body">
+      <img class="gal-prev" data-photo="${esc(photoRef(g.photo))}" alt="${kindLabel(g.photo.kind)}">
+      ${galleryWhen('ge', g.showId, g.date)}
+      <div class="fld"><label for="ge-kind">사진 종류</label><select id="ge-kind">${PHOTO_KINDS.map(k => `<option value="${k.k}" ${kindK(g.photo.kind) === k.k ? 'selected' : ''}>${k.label}</option>`).join('')}</select></div>
+      <div class="fld"><label for="ge-cap">메모</label><input id="ge-cap" value="${esc(g.photo.caption || '')}" placeholder="예: 오후 3시쯤, 프랑스 바이어로 보임"></div>
+    </div>
+    ${mFoot('수정 내용 저장', `<button type="button" class="btn btn-danger" id="ge-del">사진 삭제</button><span class="spacer"></span>`)}
+  </form>`;
+  openModal(html, root => {
+    const q = i => root.querySelector('#' + i);
+    loadPhotos(root);
+    bindDayPicker(root, 'ge', true);
+    const del = q('ge-del');
+    del.onclick = async () => {
+      if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.textContent = '한 번 더 누르면 삭제'; del.classList.add('solid'); return; }
+      if (await run(() => col('gallery').doc(g.id).delete())) { removePhotos([g.photo]); closeModal(); toast('보류 사진을 삭제했습니다.'); }
+    };
+    root.querySelector('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const date = q('ge-date').value;
+      if (!isYmd(date)) return setErr(root, '찍은 날짜를 선택해 주세요.', q('ge-date'));
+      const photo = Object.assign({}, g.photo, {kind:kindK(q('ge-kind').value), caption:val(root, 'ge-cap').slice(0, 200)});
+      busy(root, true, '저장 중…');
+      const ok = await run(() => col('gallery').doc(g.id).update({showId:q('ge-show').value, date, photo, updatedAt:Date.now()}));
+      busy(root, false, '수정 내용 저장');
+      if (ok) { closeModal(); toast('보류 사진을 수정했습니다.'); }
+    });
+  }, true);
+}
+function openGalleryLink(id) {
+  if (!guardWrite()) return;
+  const g = S.gallery.find(x => x.id === id); if (!g) return;
+  // same-day consultation in this show if there is one, otherwise the latest
+  const target = b => { const ms = meetsOf(b.id).filter(m => m.showId === g.showId); return ms.find(m => m.date === g.date) || ms[0]; };
+  const pool = S.buyers.filter(b => target(b)).sort((a, b) => (a.company || '').localeCompare(b.company || ''));
+  if (!pool.length) { toast('이 전시회에 상담 기록이 있는 바이어가 없습니다.', 'bad'); return; }
+  const row = b => {
+    const m = target(b), c = primary(b);
+    return `<label data-q="${esc([b.company, b.country, ...(b.contacts || []).map(x => x.name)].join(' ').toLowerCase())}"><input type="radio" name="gl-b" value="${esc(b.id)}"><span><strong>${esc(b.company)}</strong>${c.name ? ` · ${esc(c.name)}` : ''}</span><span class="gp-meta">${esc(b.country || '')} · ${fmtMD(m.date)} 상담</span></label>`;
+  };
+  const html = `<form class="form" novalidate>
+    ${mHead('Link to Buyer', '바이어에 연결')}
+    <div class="m-body">
+      <img class="gal-prev" data-photo="${esc(photoRef(g.photo))}" alt="${kindLabel(g.photo.kind)}">
+      <p class="sub">고른 바이어의 상담 기록에 이 사진이 들어가고, 보류 갤러리에서는 빠집니다. ${fmtMD(g.date)} 상담이 있으면 그 기록에, 없으면 가장 최근 상담에 넣습니다.</p>
+      <div class="fld"><label for="gl-q">바이어 찾기</label><input id="gl-q" placeholder="회사명 · 담당자 · 국가" autocomplete="off"></div>
+      <div class="gal-pick" id="gl-list" role="radiogroup" aria-label="바이어 선택">${pool.map(row).join('')}</div>
+    </div>
+    ${mFoot('이 바이어로 옮기기')}
+  </form>`;
+  openModal(html, root => {
+    const q = i => root.querySelector('#' + i);
+    loadPhotos(root);
+    q('gl-q').addEventListener('input', () => {
+      const t = q('gl-q').value.trim().toLowerCase();
+      root.querySelectorAll('#gl-list label').forEach(l => { l.hidden = !!t && !l.dataset.q.includes(t); });
+    });
+    root.querySelector('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const pick = root.querySelector('input[name="gl-b"]:checked');
+      if (!pick) return setErr(root, '바이어를 골라 주세요.');
+      const b = buyerById(pick.value), m = b && target(b);
+      if (!m) return setErr(root, '이 바이어의 상담 기록을 찾지 못했습니다.');
+      busy(root, true, '옮기는 중…');
+      const ok = await run(async () => {
+        const kept = (Array.isArray(m.photos) ? m.photos : []).filter(p => !p || p.id !== g.photo.id);
+        await col('meetings').doc(m.id).update({photos:[...kept, g.photo], updatedAt:Date.now()});
+        await col('gallery').doc(g.id).delete();
+      });
+      busy(root, false, '이 바이어로 옮기기');
+      if (ok) { closeModal(); toast(`${b.company}의 ${fmtMD(m.date)} 상담 기록으로 옮겼습니다.`); }
     });
   }, true);
 }
@@ -2139,6 +2336,10 @@ document.addEventListener('click', e => {
     case 'lb-prev': stepLb(-1); break;
     case 'lb-next': stepLb(1); break;
     case 'add-photo': openMeetingForm({meetingId:t.dataset.mid, focusPhotos:true}); break;
+    case 'gallery-add': openGalleryForm(); break;
+    case 'gallery-edit': openGalleryEdit(id); break;
+    case 'gallery-link': openGalleryLink(id); break;
+    case 'gallery-view': { const g = S.gallery.find(x => x.id === id); if (g) { const list = galleryOf(g.showId).map(galleryPhoto); openLightbox(list, Math.max(0, list.findIndex(p => p.id === g.photo.id))); } break; }
     case 'refresh': if (S.db) S.db.refresh().then(() => toast('최신 내용으로 새로고침했습니다.'), onRefreshErr); break;
     case 'logout': logout(''); break;
     case 'close-lightbox': closeLb(); break;
@@ -2162,7 +2363,7 @@ document.addEventListener('change', e => {
 });
 
 /* ---------- server (Google Apps Script) ---------- */
-const COLS = ['shows', 'buyers', 'meetings', 'followups'];
+const COLS = ['shows', 'buyers', 'meetings', 'followups', 'gallery'];
 const store = {
   get: k => { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } },
   set: (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (_) {} }

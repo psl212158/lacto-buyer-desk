@@ -35,6 +35,12 @@ assert(got.ok && got.data === img && got.media_type === 'image/jpeg');
 rt.post({action: 'save', code: 'team-2026', collection: 'meetings', id: 'mgm1abc', doc: {buyerId: 'mgb1abc', showId: 'sial-paris-2026', date: '2026-10-18', photos: [{id: up.id, kind: 'people'}], notes: '=SUM(1)'}});
 assert(rt.post({action: 'deletePhoto', code: 'team-2026', id: up.id}).ok);
 assert.strictEqual(rt.post({action: 'getPhoto', code: 'team-2026', id: up.id}).error, 'not_found');
+// pending photo gallery: its own collection, never part of the buyer list
+r = rt.post({action: 'save', code: 'team-2026', collection: 'gallery', id: 'mgg1abc', doc: {showId: 'sial-paris-2026', date: '2026-10-19', photo: {id: 'file000000000099', thumb: '', kind: 'people', caption: '부스'}}});
+assert(r.ok && r.doc.photo.kind === 'people');
+assert.strictEqual(rt.post({action: 'load', code: 'team-2026'}).gallery.length, 1);
+assert(rt.post({action: 'remove', code: 'team-2026', collection: 'gallery', id: 'mgg1abc'}).ok);
+assert.strictEqual(rt.post({action: 'load', code: 'team-2026'}).gallery.length, 0);
 // readable sheet
 rt.api.rebuildBuyerSheet();
 const view = rt.sheets.get('바이어 리스트').rows;

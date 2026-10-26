@@ -8,7 +8,8 @@
  *   팀 접속 코드는 setup 이 자동으로 만들어 시트의 '시작하기' 탭에 적어 둡니다.
  *
  * 저장 위치
- *   - 시트 탭 4개: shows / buyers / meetings / followups (열: id | updatedAt | data(JSON)).
+ *   - 시트 탭 5개: shows / buyers / meetings / followups / gallery (열: id | updatedAt | data(JSON)).
+ *     gallery 는 바이어가 확실하지 않아 상담 기록에 넣지 않은 '보류 사진'입니다.
  *     사이트가 읽고 쓰는 원본입니다. 직접 고치지 마세요.
  *   - '바이어 리스트' 탭: 사람이 보기 위한 표. 10분마다, 또는 메뉴에서 새로고침됩니다.
  *   - 상담 사진(명함, 바이어와 함께 찍은 사진 등): 내 드라이브의 '락토코리아 바이어 데스크 사진' 폴더.
@@ -16,7 +17,7 @@
  * 명함 자동 인식은 구글 드라이브의 글자 인식(OCR)을 씁니다. 별도 API 키나 비용이 없습니다.
  */
 
-const COLLECTIONS = ['shows', 'buyers', 'meetings', 'followups'];
+const COLLECTIONS = ['shows', 'buyers', 'meetings', 'followups', 'gallery'];
 const VIEW_SHEET = '바이어 리스트';
 const START_SHEET = '시작하기';
 const SITE_URL = 'https://psl212158.github.io/lacto-buyer-desk/';
@@ -550,7 +551,7 @@ function setup() {
     ['', ''],
     ['처음 설정 순서', '1) Apps Script에서 setup 실행  2) 배포 → 새 배포 → 웹 앱 (실행: 나, 액세스: 모든 사용자)  3) 사이트에서 서버 주소·접속 코드·이름 입력'],
     ['접속 코드 바꾸기', '위 접속 코드 칸을 고친 뒤 메뉴 바이어 데스크 → 초기 설정 · 접속 코드 반영'],
-    ['데이터 탭', 'shows / buyers / meetings / followups 탭은 사이트가 쓰는 원본이라 직접 고치지 마세요'],
+    ['데이터 탭', 'shows / buyers / meetings / followups / gallery 탭은 사이트가 쓰는 원본이라 직접 고치지 마세요'],
     ['사람용 표', '바이어 리스트 탭 (10분마다 자동 새로고침)'],
     ['사진 폴더', '내 드라이브 → ' + PHOTO_FOLDER_NAME],
     ['명함 인식', '구글 드라이브 글자 인식(OCR) 사용 · 별도 키나 비용 없음']
