@@ -45,4 +45,11 @@ const sa = makeRuntime({props: {}, bound: false});
 sa.api.setup();
 assert.strictEqual(sa.props.SHEET_ID, 'sheet0000001');
 assert(sa.post({action: 'load', code: sa.props.ACCESS_CODE}).ok);
+// opening the web app URL runs setup once if it never ran, and never shows the code
+const lazy = makeRuntime({props: {}});
+const got1 = JSON.parse(lazy.api.doGet().text);
+assert(got1.ok && /^lacto-/.test(lazy.props.ACCESS_CODE) && got1.code === undefined, 'doGet setup');
+lazy.props.ACCESS_CODE = 'kept-code';
+JSON.parse(lazy.api.doGet().text);
+assert.strictEqual(lazy.props.ACCESS_CODE, 'kept-code');
 console.log('Code.gs server tests passed');

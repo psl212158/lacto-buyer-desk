@@ -37,6 +37,9 @@
 - `index.html`, `config.js`: 사이트는 `gh-pages` 브랜치에서 배포됩니다. `main`에 커밋한 뒤 같은 내용을 `gh-pages`에도 푸시하면(`git push origin main main:gh-pages`) 1~2분 뒤 바뀝니다.
   `main` 하나로만 관리하려면 **Settings → Pages**에서 Branch를 **main / (root)**로 바꾸면 됩니다.
 - `Code.gs`: Apps Script에 다시 붙여 넣고 **배포 → 배포 관리 → 수정(연필) → 버전: 새 버전 → 배포**를 누릅니다. 웹 앱 URL은 그대로 유지됩니다.
+  - 지금 운영 중인 서버는 [clasp](https://github.com/google/clasp)로 올렸습니다. `.clasp.json`이 있는 PC에서는 `clasp push` 후 `clasp redeploy <배포 id>`로 같은 URL에 새 버전을 올릴 수 있습니다(배포 id는 `config.js` 주소의 `/s/`와 `/exec` 사이).
+  - 웹 앱 설정(실행: 나 / 액세스: 모든 사용자)은 `apps-script/appsscript.json`에 들어 있습니다.
+  - 처음 배포한 뒤 소유자가 권한을 허용해도, 몇 분 동안은 403이 날 수 있습니다. setup을 따로 안 돌렸으면 웹 앱 주소를 처음 열 때 자동으로 실행됩니다.
 
 ## 데이터 구조
 

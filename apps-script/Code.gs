@@ -29,7 +29,15 @@ const STAGE_LABELS = {met: '상담완료', info: '자료발송', sample: '샘플
 
 /* ---------------- web app ---------------- */
 
+// Opening the web app URL once as the owner grants the script's permissions; finish setup then if it never ran.
 function doGet() {
+  if (!PropertiesService.getScriptProperties().getProperty('ACCESS_CODE')) {
+    try {
+      withLock_(function () { if (!PropertiesService.getScriptProperties().getProperty('ACCESS_CODE')) setup(); });
+    } catch (err) {
+      return json_({ok: false, error: 'setup_required', message: String((err && err.message) || err)});
+    }
+  }
   return json_({ok: true, service: 'lacto-buyer-desk'});
 }
 

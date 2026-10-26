@@ -1,6 +1,6 @@
 # 인수인계: 락토코리아 바이어 데스크
 
-새 Claude Code 세션이 이 프로젝트를 이어받을 때 읽는 문서입니다. 마지막 정리: 2026-10-26.
+새 Claude Code 세션이 이 프로젝트를 이어받을 때 읽는 문서입니다. 마지막 정리: 2026-10-26 (서버 배포 후).
 
 ## 1. 한 줄 요약
 
@@ -17,26 +17,25 @@
 | 항목 | 상태 |
 |---|---|
 | 사이트 코드 (`index.html`) | 완료·배포됨 |
-| 서버 코드 (`apps-script/Code.gs`) | 완료. **아직 사용자 구글 계정에 배포 안 됨** ← 남은 핵심 작업 |
-| `config.js`의 `apiUrl` | **비어 있음.** Apps Script 웹 앱 `/exec` 주소를 받으면 채워야 함 |
-| 명함 인식 | Claude API → 구글 드라이브 OCR로 교체 완료 (키·비용 없음) |
-| 테스트 | `tests/` (Node 스텁 서버 테스트 + Playwright e2e) 모두 통과 |
+| 서버 (`apps-script/Code.gs`) | **배포됨 (2026-10-26, clasp).** 사용자 드라이브의 시트 "락토코리아 바이어 데스크" + 연결된 Apps Script. setup 완료, 접속 코드는 시트 '시작하기'!B4 |
+| `config.js`의 `apiUrl` | 채움 (`…/macros/s/AKfycbwN47…/exec`) |
+| 명함 인식 | 구글 드라이브 OCR. **실제 명함으로는 아직 확인 안 함** |
+| 테스트 | `tests/` 통과 (`test-gas.js`에 doGet 자동 setup 케이스 추가) |
 | Claude 아티팩트 버전 | 예전 프로토타입 https://claude.ai/artifact/7uAyE3yDxu6aGx211wtpVE. 팀이 못 쓰므로 **폐기 예정**. 사용자가 원하면 삭제 |
 
-### 사용자가 마지막에 한 일
-- Apps Script API 켬 (https://script.google.com/home/usersettings)
-- 브라우저에서 구글 로그인
-- 이건 `clasp`로 자동 배포하려고 한 준비 단계임. 아직 어떤 도구에도 로그인이 연결되지 않았고, 서버는 배포 전.
+### 배포하면서 알게 된 것
+- 사용자 PC에는 Node가 설치돼 있지 않았음. 포터블 Node 24를 `%LOCALAPPDATA%/Programs/node-v24.22.1-win-x64`에 풀고, 거기에 clasp 3.4.1을 전역 설치함(명령 실행 전에 PATH에 추가할 것).
+- `clasp login` 동의 화면에서 체크박스를 안 누르면 이메일 권한만 넘어오고, `create`가 "insufficient authentication scopes"로 실패함. 이때는 **모두 선택**하고 다시 로그인.
+- `clasp create`는 `apps-script/appsscript.json`을 기본값으로 덮어씀. 다시 복원한 뒤 `push --force`.
+- 소유자가 권한을 허용한 뒤에도 익명 요청이 몇 분 동안 403("액세스 거부됨 · Drive 액세스 권한 필요")을 돌려줌. 기다리면 풀렸음.
+- `.clasp.json`(scriptId)은 커밋하지 않음(.gitignore). 사용자 PC의 저장소 폴더에만 있음.
 
 ## 3. 바로 할 일 (우선순위 순)
 
-1. **Apps Script 서버 배포.** 둘 중 하나.
-   - **수동 (사용자 5분):** 새 구글 시트 → 확장 프로그램 → Apps Script → `apps-script/Code.gs` 붙여 넣기 → 함수 `setup` ▶ 실행(권한 허용: 고급 → 이동 → 허용) → 배포 → 새 배포 → 웹 앱(실행: 나 / 액세스: 모든 사용자) → `/exec` 주소 받기.
-   - **clasp 자동화 (로컬 Claude Code):** 아래 6장 참고.
-2. `/exec` 주소를 `config.js`의 `apiUrl`에 넣고 커밋 → `git push origin main main:gh-pages`.
-3. 실제 명함 한 장으로 **드라이브 OCR이 실제로 동작하는지** 확인. 스텁으로만 테스트했음. 실패하면 응답 `error: 'ocr_failed'`의 HTTP 코드를 볼 것.
-4. 사용자에게 팀원 안내 문구(사이트 주소 + 접속 코드 + 이름 입력)를 만들어 주기.
-5. (선택) Claude 아티팩트 삭제 여부 확인.
+1. 실제 명함 한 장으로 **드라이브 OCR이 실제로 동작하는지** 확인. 실패하면 응답 `error: 'ocr_failed'`의 HTTP 코드를 볼 것.
+2. 사용자에게 팀원 안내 문구(사이트 주소 + 접속 코드 + 이름 입력)를 만들어 주기.
+3. (선택) '시작하기' 탭의 '서버 주소' 칸이 안내 문구로 남아 있음. 편집기에서 setup을 돌렸을 때는 `ScriptApp.getService().getUrl()`이 /exec를 주지 않았음.
+4. (선택) Claude 아티팩트 삭제 여부 확인.
 
 ## 4. 파일 구조
 
@@ -44,7 +43,8 @@
 index.html            사이트 전체(HTML+CSS+JS 한 파일, 약 2,300줄)
 config.js             window.LK_CONFIG = { apiUrl: '' }  ← /exec 주소
 assets/logo.png       LACTO KOREA 로고 (투명 PNG, 207×89)
-apps-script/Code.gs   Apps Script 서버 (약 560줄)
+apps-script/Code.gs   Apps Script 서버 (약 570줄)
+apps-script/appsscript.json  웹 앱 매니페스트 (실행: 나 / 액세스: 모든 사용자, Asia/Seoul)
 README.md             사용자용 설정 안내 (한국어)
 HANDOFF.md            이 문서
 .nojekyll             GitHub Pages가 Jekyll 처리하지 않게
@@ -115,23 +115,19 @@ node tests/e2e.js    # 스크린샷은 tests/out/ (gitignore)
 - 팔로우업 저장 → 그 팔로우업이 날짜상 최신이면 바이어의 `stage / nextAction / nextDate`를 덮어씀.
 - 사진은 상담 기록 단위로 저장(원본 1920px JPEG + 미리보기 480px 두 파일). 상담 삭제·바이어 삭제 시 드라이브 파일도 휴지통.
 
-## 6. clasp로 자동 배포하려면 (로컬 Claude Code)
-
-클라우드 세션에서는 script.google.com 접속이 막혀 있고, 구글 로그인을 넘겨받을 수 없어서 못 했음. 로컬에서는:
+## 6. clasp로 서버 고치기 (사용자 PC)
 
 ```bash
-npm i -g @google/clasp            # 3.x 확인됨
-clasp login                       # 브라우저 로그인 (사용자 1클릭)
-clasp create --type sheets --title "락토코리아 바이어 데스크" --rootDir apps-script
-clasp push                        # Code.gs 업로드 (appsscript.json 필요하면 추가)
-clasp deploy --description "v1"   # 웹 앱 배포 → /exec 주소
+export PATH="$LOCALAPPDATA/Programs/node-v24.22.1-win-x64:$PATH"   # Git Bash
+clasp push --force                                   # apps-script/ 의 Code.gs + appsscript.json
+clasp redeploy AKfycbwN47…(config.js 주소의 배포 id) --description "v3 …"   # 같은 URL에 새 버전
 ```
 
-주의:
-- 웹 앱 설정은 매니페스트에 넣을 것: `{"timeZone":"Asia/Seoul","runtimeVersion":"V8","exceptionLogging":"STACKDRIVER","webapp":{"executeAs":"USER_DEPLOYING","access":"ANYONE_ANONYMOUS"}}`
-- **소유자가 스크립트 권한을 한 번 허용해야** 웹 앱이 동작함. `/exec`를 브라우저로 열거나 편집기에서 `setup` 실행.
-- `setup()`은 편집기에서 실행하는 게 가장 간단. `clasp run`은 GCP 프로젝트 연결이 필요해 번거로움.
-  - 대안: `doGet`/`doPost`에서 `ACCESS_CODE`가 없을 때 `setup()`을 자동 실행하는 지연 초기화. 미구현.
+- 처음 배포 순서는 `clasp login` → `clasp create --type sheets --title "락토코리아 바이어 데스크" --rootDir apps-script` → manifest 복원 → `push` → `deploy`였음.
+- 웹 앱 설정은 매니페스트(`appsscript.json`)에 있음: 실행 USER_DEPLOYING, 액세스 ANYONE_ANONYMOUS.
+- **소유자가 스크립트 권한을 한 번 허용해야** 웹 앱이 동작함. 편집기에서 `setup`을 실행하거나 `/exec`를 브라우저로 열면 됨.
+  - `doGet`은 `ACCESS_CODE`가 없으면 setup을 스크립트 락 안에서 실행함. 응답에 접속 코드는 넣지 않음.
+- `clasp run`, `clasp logs`는 GCP 프로젝트 연결이 필요해 쓰지 않음. clasp 토큰은 Sheets API를 쓸 수 없지만, Drive export(`text/csv`)로 첫 탭은 읽을 수 있음.
 - 구글 드라이브 MCP 커넥터로는 Apps Script 프로젝트를 만들 수 없음("first party item with content requires an external mime type").
 
 ## 7. index.html 구조 (찾아갈 때)
