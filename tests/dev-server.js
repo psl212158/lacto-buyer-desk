@@ -18,7 +18,8 @@ const save = (collection, id, doc) => rt.post({action: 'save', code: CODE, colle
 const now = Date.now();
 [['b1', 'Exemple Foods SARL', 'France', 'Marie Exemple'], ['b2', 'Muster Handel GmbH', 'Germany', 'Hans Muster']].forEach(([id, company, country, name], i) => {
   save('buyers', id, {company, country, grade: 'B', stage: 'met', contacts: [{name, title: 'Buyer', email: '', phone: '', msg: ''}], showIds: ['sial-paris-2026'], tags: [], createdAt: now + i, updatedAt: now + i});
-  const notes = i === 0 ? '샘플 상담 메모: 신제품 두 가지에 관심, 단가와 MOQ 문의.\n귀국 후 가격표와 샘플 발송 요청.' : '';
+  // the second buyer carries only the import placeholder, which the journal tab leaves out
+  const notes = i === 0 ? '샘플 상담 메모: 신제품 두 가지에 관심, 단가와 MOQ 문의.\n귀국 후 가격표와 샘플 발송 요청.' : 'SIAL PARIS 2026 Buyer 시트 10/19 탭에서 옮김 · 상담 내용 미기재';
   save('meetings', 'm' + id, {buyerId: id, showId: 'sial-paris-2026', date: '2026-10-19', time: i === 0 ? '14:30' : '', staff: i === 0 ? '테스터' : '', interests: i === 0 ? ['Sample A'] : [], requests: i === 0 ? ['가격표', '샘플'] : [], notes, photos: [], source: 'manual', createdAt: now + i, updatedAt: now + i});
 });
 save('gallery', 'g1', {showId: 'sial-paris-2026', date: '2026-10-19', photo: {id: up('card1.jpg'), thumb: '', kind: 'people', caption: '오후, 프랑스 바이어로 보임'}, createdAt: now, updatedAt: now});

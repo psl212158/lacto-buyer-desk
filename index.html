@@ -1042,8 +1042,16 @@ function fuCard(b) {
 }
 
 /* ---------- tab: consultation journal ---------- */
-// IFA-style daily sheet: only consultations that have notes, buyer and content side by side.
-const journalOf = st => st.meetings.filter(m => (m.notes || '').trim() && buyerById(m.buyerId));
+// IFA-style daily sheet: only consultations with real notes, buyer and content side by side.
+// The sheet import left provenance text in notes ("… 시트 10/17 탭에서 옮김 · 상담 내용 미기재"); that is not consultation content.
+const NOTE_FILLER = [/[^\n·]*시트[^\n·]*탭에서\s*옮김/g, /상담\s*내용\s*(미기재|없음)/g];
+function consultText(notes) {
+  let t = String(notes || '');
+  NOTE_FILLER.forEach(re => { t = t.replace(re, ' '); });
+  t = t.split('\n').map(l => l.replace(/^[\s·,\-–|/]+|[\s·,\-–|/]+$/g, '').replace(/\s*·\s*(·\s*)+/g, ' · ')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return /[\p{L}\p{N}]/u.test(t) ? t : '';
+}
+const journalOf = st => st.meetings.filter(m => consultText(m.notes) && buyerById(m.buyerId));
 function journalGroups(s, st) {
   const keyOf = d => d < s.startDate ? 'pre' : d > s.endDate ? 'post' : d;
   const all = journalOf(st).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.time || '99').localeCompare(b.time || '99'));
@@ -1054,7 +1062,7 @@ function journalGroups(s, st) {
 }
 function renderJournal(s, st) {
   const {all, keyOf, groups} = journalGroups(s, st);
-  if (!all.length) return `<div class="empty"><h3>상담 내용이 입력된 바이어가 없습니다</h3><p>상담 기록에 '상담 메모'를 적으면 바이어와 상담 내용이 이 일지에 날짜별로 모입니다.</p></div>`;
+  if (!all.length) return `<div class="empty"><h3>상담 내용이 입력된 바이어가 없습니다</h3><p>상담 기록에 '상담 메모'를 적으면 바이어와 상담 내용이 이 일지에 날짜별로 모입니다. 시트에서 옮기면서 생긴 '탭에서 옮김 · 상담 내용 미기재' 같은 메모는 빠집니다.</p></div>`;
   const days = showDays(s);
   const cnt = k => all.filter(m => keyOf(m.date) === k).length;
   const chips = [{k:'all', l:'전체', n:all.length}];
@@ -1087,7 +1095,7 @@ function renderJournal(s, st) {
             ${cell('연락처', esc([c.email, c.phone].filter(Boolean).join(' · ')))}
             ${cell('관심 제품', tags ? `<span class="tagrow">${tags}</span>` : '')}
             ${cell('요청사항', reqs ? `<span class="tagrow">${reqs}</span>` : '')}
-            <div class="lg-k">주요 상담내용</div><div class="lg-wide lg-notes">${esc(m.notes.trim())}</div>
+            <div class="lg-k">주요 상담내용</div><div class="lg-wide lg-notes">${esc(consultText(m.notes))}</div>
           </div>
         </article>`;
       }).join('')}
@@ -1103,7 +1111,7 @@ function journalText(s, st, d) {
     lines.push('', `${i + 1}. ${b.company}${b.country ? ` (${b.country})` : ''}${c.name ? ` — ${[c.name, c.title].filter(Boolean).join(' / ')}` : ''}`);
     if ((m.interests || []).length) lines.push(`   관심 제품: ${m.interests.join(', ')}`);
     if ((m.requests || []).length) lines.push(`   요청사항: ${m.requests.join(', ')}`);
-    lines.push(`   주요 상담내용: ${m.notes.trim().replace(/\n+/g, ' / ')}`);
+    lines.push(`   주요 상담내용: ${consultText(m.notes).replace(/\n+/g, ' / ')}`);
   });
   return lines.join('\n');
 }

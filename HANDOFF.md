@@ -140,7 +140,7 @@ clasp redeploy AKfycbwN47…(config.js 주소의 배포 id) --description "v3 �
 - **constants:** STAGES, GRADES, FU_TYPES, REQUESTS, BIZ, COUNTRIES, SHOW_COLORS
 - **state:** 객체 `S`
 - **home:** `renderHome`, `badgeCard`(전시회 배지 카드)
-- **show workspace:** `renderShow`(KPI 5개, 일자별 막대·진행 단계·국가 차트) + 탭 `renderDaily` / `renderBook`(전화번호부, 초성·알파벳 색인) / `renderFu`(지연·7일 이내·미착수·예정) / `renderGallery`(보류 갤러리; 폼 `openGalleryForm`·`openGalleryEdit`·`openGalleryLink`) / `renderJournal`(상담일지: 상담 메모가 있는 상담만 날짜별로, IFA 일일 수출상담 실적표 형식의 표. '이 날 일지 복사'는 `journalText`)
+- **show workspace:** `renderShow`(KPI 5개, 일자별 막대·진행 단계·국가 차트) + 탭 `renderDaily` / `renderBook`(전화번호부, 초성·알파벳 색인) / `renderFu`(지연·7일 이내·미착수·예정) / `renderGallery`(보류 갤러리; 폼 `openGalleryForm`·`openGalleryEdit`·`openGalleryLink`) / `renderJournal`(상담일지: 실제 상담 메모가 있는 상담만 날짜별로, IFA 일일 수출상담 실적표 형식의 표. 시트 이관 때 들어간 '… 시트 10/17 탭에서 옮김 · 상담 내용 미기재' 같은 문구는 `consultText`가 지우고, 남는 내용이 없으면 제외. '이 날 일지 복사'는 `journalText`)
 - **drawer:** `renderDrawer`(진행 단계 스테퍼, 담당자 복사·tel·mailto, `photoSection`, 타임라인 `tlMeet`/`tlFu`)
 - **forms:**
   - `openMeetingForm`(명함 자동 입력 존 + 상담 사진 편집 + 기존 바이어 연결)
