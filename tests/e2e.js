@@ -22,7 +22,7 @@ const fix = () => { const D = Date; const fixed = new D('2026-10-26T12:00:00+09:
   pg.on('console', m => { if (m.type() === 'error' && !/fonts\.g/.test(m.text())) errs.push('console: ' + m.text()); });
   await pg.goto(SITE); await pg.waitForTimeout(300);
   await pg.screenshot({path: OUT + 'gh-login.png'});
-  await pg.fill('#lg-api', 'https://script.google.com/macros/s/TEST/exec');
+  if (await pg.isVisible('#lg-api')) await pg.fill('#lg-api', 'https://script.google.com/macros/s/TEST/exec');
   await pg.fill('#lg-code', 'wrong'); await pg.fill('#lg-name', '테스터');
   await pg.click('#lg-go'); await pg.waitForTimeout(300);
   console.log('wrong code msg:', await pg.textContent('#lg-err'));
@@ -67,11 +67,14 @@ const fix = () => { const D = Date; const fixed = new D('2026-10-26T12:00:00+09:
   console.log('after batch buyers/meetings:', ld.buyers.length, ld.meetings.length, 'photos per meeting:', ld.meetings.map(m => (m.photos || []).length).join(','));
   rt.api.rebuildBuyerSheet();
   console.log('sheet rows:', rt.sheets.get('바이어 리스트').rows.length - 1);
+  // consultation journal tab: only meetings with notes appear
+  await pg.click('[data-tab="log"]'); await pg.waitForTimeout(300);
+  console.log('journal entries:', await pg.$$eval('.lg-entry', e => e.length), 'empty state:', await pg.$$eval('.tabbody .empty', e => e.length));
   // mobile
   const m = await b.newContext({viewport:{width:390,height:844}, colorScheme:'dark'}); await m.addInitScript(fix);
   await m.route('https://script.google.com/**', async route => { const body = JSON.parse(route.request().postData() || '{}'); await route.fulfill({status:200, contentType:'application/json', body:JSON.stringify(rt.post(body))}); });
   const mp = await m.newPage(); mp.on('pageerror', e => errs.push('mobile: ' + e.message));
-  await mp.goto(SITE); await mp.fill('#lg-api', 'https://script.google.com/macros/s/TEST/exec'); await mp.fill('#lg-code', 'lacto-test'); await mp.fill('#lg-name', '테스터'); await mp.click('#lg-go'); await mp.waitForTimeout(600);
+  await mp.goto(SITE); if (await mp.isVisible('#lg-api')) await mp.fill('#lg-api', 'https://script.google.com/macros/s/TEST/exec'); await mp.fill('#lg-code', 'lacto-test'); await mp.fill('#lg-name', '테스터'); await mp.click('#lg-go'); await mp.waitForTimeout(600);
   await mp.click('.badge'); await mp.waitForTimeout(300); await mp.click('.mrow'); await mp.waitForTimeout(600);
   await mp.screenshot({path: OUT + 'gh-mobile-drawer.png'});
   console.log('mobile scrollWidth', await mp.evaluate(() => document.documentElement.scrollWidth));

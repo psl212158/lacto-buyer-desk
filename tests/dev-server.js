@@ -11,14 +11,15 @@ const CODE = 'lacto-test';
 const rt = makeRuntime({props: {ACCESS_CODE: CODE}, ocrText: () => 'TEST CARD FOODS SARL\nMarie Exemple\nBuyer\nmarie@testcardfoods.fr'});
 rt.api.setup();
 
-// sample data: two buyers met on 10/19 and one pending photo
+// sample data: two buyers met on 10/19 (only the first has consultation notes, so the journal tab shows one) and one pending photo
 const img = name => fs.readFileSync(path.join(__dirname, 'fixtures', name)).toString('base64');
 const up = name => rt.post({action: 'uploadPhoto', code: CODE, media_type: 'image/jpeg', data: img(name)}).id;
 const save = (collection, id, doc) => rt.post({action: 'save', code: CODE, collection, id, doc});
 const now = Date.now();
 [['b1', 'Exemple Foods SARL', 'France', 'Marie Exemple'], ['b2', 'Muster Handel GmbH', 'Germany', 'Hans Muster']].forEach(([id, company, country, name], i) => {
   save('buyers', id, {company, country, grade: 'B', stage: 'met', contacts: [{name, title: 'Buyer', email: '', phone: '', msg: ''}], showIds: ['sial-paris-2026'], tags: [], createdAt: now + i, updatedAt: now + i});
-  save('meetings', 'm' + id, {buyerId: id, showId: 'sial-paris-2026', date: '2026-10-19', time: '', staff: '', interests: [], requests: [], notes: '', photos: [], source: 'manual', createdAt: now + i, updatedAt: now + i});
+  const notes = i === 0 ? '샘플 상담 메모: 신제품 두 가지에 관심, 단가와 MOQ 문의.\n귀국 후 가격표와 샘플 발송 요청.' : '';
+  save('meetings', 'm' + id, {buyerId: id, showId: 'sial-paris-2026', date: '2026-10-19', time: i === 0 ? '14:30' : '', staff: i === 0 ? '테스터' : '', interests: i === 0 ? ['Sample A'] : [], requests: i === 0 ? ['가격표', '샘플'] : [], notes, photos: [], source: 'manual', createdAt: now + i, updatedAt: now + i});
 });
 save('gallery', 'g1', {showId: 'sial-paris-2026', date: '2026-10-19', photo: {id: up('card1.jpg'), thumb: '', kind: 'people', caption: '오후, 프랑스 바이어로 보임'}, createdAt: now, updatedAt: now});
 

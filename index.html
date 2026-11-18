@@ -526,6 +526,31 @@ a.val:hover{color:var(--accent);text-decoration:underline}
 .lb-prev{left:max(10px,env(safe-area-inset-left,0px));top:50%;margin-top:-22px}
 .lb-next{right:max(10px,env(safe-area-inset-right,0px));top:50%;margin-top:-22px}
 
+/* consultation journal (IFA-style daily sheet) */
+.lg-day{display:grid;gap:10px}
+.lg-day + .lg-day{margin-top:18px}
+.lg-sheet{display:grid;grid-template-columns:110px minmax(0,1fr) 110px minmax(0,1fr);border:1px solid var(--ink-3);border-radius:8px;overflow:hidden;background:var(--surface)}
+.lg-sheet > *{padding:9px 12px;border-right:1px solid var(--line);border-top:1px solid var(--line);min-width:0;font-size:13.5px;overflow-wrap:anywhere}
+.lg-sheet > :nth-child(4n){border-right:0}
+.lg-sheet > :nth-child(-n+4){border-top:0}
+.lg-sheet .lg-k{background:var(--surface-2);color:var(--ink-2);font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center;text-align:center;word-break:keep-all}
+.lg-sheet .lg-wide{grid-column:span 3;border-right:0}
+.lg-sheet .lg-notes{white-space:pre-wrap;line-height:1.6;min-height:52px}
+.lg-head{border-color:var(--ink)}
+.lg-head .lg-k{background:var(--ink);color:var(--bg)}
+.lg-head .lg-title{font-family:var(--f-display);font-weight:800;font-size:15px}
+.lg-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.lg-meta .sub{font-size:12px}
+.lg-entry{display:grid;gap:4px}
+.lg-entry .lg-meta{padding:0 2px}
+@media (max-width:640px){
+  .lg-sheet{grid-template-columns:88px minmax(0,1fr)}
+  .lg-sheet > *{border-right:0}
+  .lg-sheet > :nth-child(2n+1){border-right:1px solid var(--line)}
+  .lg-sheet > :nth-child(3),.lg-sheet > :nth-child(4){border-top:1px solid var(--line)}
+  .lg-sheet .lg-wide{grid-column:auto}
+}
+
 /* pending photo gallery */
 .gal-intro{display:flex;gap:12px 16px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
 .gal-intro p{font-size:13px;color:var(--ink-2);flex:1 1 320px;min-width:0}
@@ -856,8 +881,9 @@ function renderShow() {
       <button class="tab" role="tab" aria-selected="${S.tab === 'book'}" data-act="tab" data-tab="book">바이어 주소록<span class="count">${st.buyers.reduce((n, b) => n + Math.max(1, (b.contacts || []).length), 0)}</span></button>
       <button class="tab" role="tab" aria-selected="${S.tab === 'fu'}" data-act="tab" data-tab="fu">팔로우업 관리${st.overdue ? `<span class="count bad">지연 ${st.overdue}</span>` : `<span class="count">${st.buyers.length}</span>`}</button>
       <button class="tab" role="tab" aria-selected="${S.tab === 'gallery'}" data-act="tab" data-tab="gallery">보류 갤러리<span class="count">${galleryOf(s.id).length}</span></button>
+      <button class="tab" role="tab" aria-selected="${S.tab === 'log'}" data-act="tab" data-tab="log">상담일지<span class="count">${uniq(journalOf(st).map(m => m.buyerId)).length}</span></button>
     </div>
-    <div class="tabbody" role="tabpanel">${S.tab === 'book' ? renderBook(s) : S.tab === 'fu' ? renderFu(s, st) : S.tab === 'gallery' ? renderGallery(s) : renderDaily(s, st)}</div>
+    <div class="tabbody" role="tabpanel">${S.tab === 'book' ? renderBook(s) : S.tab === 'fu' ? renderFu(s, st) : S.tab === 'gallery' ? renderGallery(s) : S.tab === 'log' ? renderJournal(s, st) : renderDaily(s, st)}</div>
   </section>`;
 }
 function dailyChart(s, meetings) {
@@ -1013,6 +1039,73 @@ function fuCard(b) {
     </div>
     ${canWrite() ? `<button class="btn btn-sm" data-act="new-fu" data-buyer="${esc(b.id)}">기록</button>` : ''}
   </div>`;
+}
+
+/* ---------- tab: consultation journal ---------- */
+// IFA-style daily sheet: only consultations that have notes, buyer and content side by side.
+const journalOf = st => st.meetings.filter(m => (m.notes || '').trim() && buyerById(m.buyerId));
+function journalGroups(s, st) {
+  const keyOf = d => d < s.startDate ? 'pre' : d > s.endDate ? 'post' : d;
+  const all = journalOf(st).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.time || '99').localeCompare(b.time || '99'));
+  const day = S.logDay || 'all';
+  const groups = new Map();
+  all.filter(m => day === 'all' || keyOf(m.date) === day).forEach(m => { if (!groups.has(m.date)) groups.set(m.date, []); groups.get(m.date).push(m); });
+  return {all, keyOf, groups};
+}
+function renderJournal(s, st) {
+  const {all, keyOf, groups} = journalGroups(s, st);
+  if (!all.length) return `<div class="empty"><h3>상담 내용이 입력된 바이어가 없습니다</h3><p>상담 기록에 '상담 메모'를 적으면 바이어와 상담 내용이 이 일지에 날짜별로 모입니다.</p></div>`;
+  const days = showDays(s);
+  const cnt = k => all.filter(m => keyOf(m.date) === k).length;
+  const chips = [{k:'all', l:'전체', n:all.length}];
+  if (cnt('pre')) chips.push({k:'pre', l:'전시 전', n:cnt('pre')});
+  days.forEach((d, i) => { if (cnt(d)) chips.push({k:d, l:`${fmtMD(d)} · ${i + 1}일차`, n:cnt(d)}); });
+  if (cnt('post')) chips.push({k:'post', l:'전시 후', n:cnt('post')});
+  if (!chips.some(c => c.k === (S.logDay || 'all'))) S.logDay = 'all';
+  const cell = (k, v, cls) => `<div class="lg-k">${k}</div><div class="${cls || ''}">${v || '<span class="muted">—</span>'}</div>`;
+  return `<div class="chips" role="group" aria-label="날짜 필터">${chips.map(c => `<button class="fchip ${(S.logDay || 'all') === c.k ? 'on' : ''}" data-act="log-day" data-day="${esc(c.k)}">${c.l} <b>${c.n}</b></button>`).join('')}</div>
+  ${[...groups.entries()].map(([d, ms]) => {
+    const idx = days.indexOf(d);
+    const staff = uniq(ms.map(m => (m.staff || '').trim())).join(', ');
+    return `<section class="lg-day">
+      <div class="lg-sheet lg-head">
+        <div class="lg-k">일자</div><div class="lg-title">${fmtDots(d) || '날짜 미입력'} (${isYmd(d) ? DOW[parseYmd(d).getDay()] : ''})${idx >= 0 ? ` · ${idx + 1}일차` : ''}</div>
+        ${cell('전시회', esc(s.name))}
+        ${cell('작성자', esc(staff))}
+        <div class="lg-k">상담 바이어</div><div class="lg-meta"><b>${uniq(ms.map(m => m.buyerId)).length}곳</b><button class="btn btn-sm" data-act="log-copy" data-day="${esc(d)}">이 날 일지 복사</button></div>
+      </div>
+      ${ms.map(m => {
+        const b = buyerById(m.buyerId), c = primary(b);
+        const tags = (m.interests || []).map(t => `<span class="tagc">${esc(t)}</span>`).join('');
+        const reqs = (m.requests || []).map(t => `<span class="reqc">${esc(t)}</span>`).join('');
+        return `<article class="lg-entry">
+          <div class="lg-meta"><span class="sub">${esc([m.time, m.staff ? '응대 ' + m.staff : ''].filter(Boolean).join(' · '))}</span><span class="m-st">${gradeChip(b.grade)}${stagePill(b.stage)}</span></div>
+          <div class="lg-sheet">
+            ${cell('바이어사', `<button class="link" data-act="open-buyer" data-id="${esc(b.id)}">${esc(b.company)}</button>`)}
+            ${cell('국가명', esc([b.country, b.city].filter(Boolean).join(' · ')))}
+            ${cell('담당자', esc([c.name, c.title].filter(Boolean).join(' · ')))}
+            ${cell('연락처', esc([c.email, c.phone].filter(Boolean).join(' · ')))}
+            ${cell('관심 제품', tags ? `<span class="tagrow">${tags}</span>` : '')}
+            ${cell('요청사항', reqs ? `<span class="tagrow">${reqs}</span>` : '')}
+            <div class="lg-k">주요 상담내용</div><div class="lg-wide lg-notes">${esc(m.notes.trim())}</div>
+          </div>
+        </article>`;
+      }).join('')}
+    </section>`;
+  }).join('') || `<p class="sub">선택한 날짜에 상담일지가 없습니다.</p>`}`;
+}
+function journalText(s, st, d) {
+  const ms = journalOf(st).filter(m => m.date === d).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+  const idx = showDays(s).indexOf(d);
+  const lines = [`[${s.name}] ${fmtLong(d)}${idx >= 0 ? ` · ${idx + 1}일차` : ''} 상담일지 (바이어 ${uniq(ms.map(m => m.buyerId)).length}곳)`];
+  ms.forEach((m, i) => {
+    const b = buyerById(m.buyerId), c = primary(b);
+    lines.push('', `${i + 1}. ${b.company}${b.country ? ` (${b.country})` : ''}${c.name ? ` — ${[c.name, c.title].filter(Boolean).join(' / ')}` : ''}`);
+    if ((m.interests || []).length) lines.push(`   관심 제품: ${m.interests.join(', ')}`);
+    if ((m.requests || []).length) lines.push(`   요청사항: ${m.requests.join(', ')}`);
+    lines.push(`   주요 상담내용: ${m.notes.trim().replace(/\n+/g, ' / ')}`);
+  });
+  return lines.join('\n');
 }
 
 /* ---------- tab: pending photo gallery ---------- */
@@ -2312,6 +2405,8 @@ document.addEventListener('click', e => {
     case 'home': S.view = 'home'; S.drawerId = null; render(); window.scrollTo(0, 0); break;
     case 'open-show': S.view = 'show'; S.showId = id; S.tab = 'daily'; S.day = 'all'; S.q = ''; S.country = 'all'; S.grade = 'all'; render(); window.scrollTo(0, 0); break;
     case 'tab': S.tab = t.dataset.tab; render(); break;
+    case 'log-day': S.logDay = t.dataset.day; render(); break;
+    case 'log-copy': { const s = showById(S.showId); if (s) copyText(journalText(s, showStats(s.id), t.dataset.day), t); break; }
     case 'day': S.day = S.day === t.dataset.day && t.classList.contains('bar') ? 'all' : t.dataset.day; S.tab = 'daily'; render(); break;
     case 'scope': S.scope = t.dataset.v; render(); break;
     case 'jump': { const g = document.getElementById('pb-L-' + t.dataset.k); if (g) g.scrollIntoView({behavior:'smooth', block:'start'}); break; }
